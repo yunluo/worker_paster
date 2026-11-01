@@ -33,10 +33,10 @@ const ID_LENGTH = 8;
 const CUSTOM_ID_RE = /^[A-Za-z0-9_-]{3,32}$/;
 const RESERVED_IDS = new Set(["api", "assets"]);
 
-function json(data: unknown, status = 200): Response {
+function json(data: unknown, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8" },
+    headers: { "content-type": "application/json; charset=utf-8", ...headers },
   });
 }
 
@@ -75,7 +75,7 @@ export default {
         return json({ error: "请求体不是合法 JSON" }, 400);
       }
 
-      const { ct, iv, lang, expiry, id: rawId } = body as Record<string, unknown>;
+      const { ct, iv, lang, expiry, id: rawId, kc: rawKc } = body as Record<string, unknown>;
       if (
         typeof ct !== "string" ||
         typeof iv !== "string" ||
@@ -83,6 +83,14 @@ export default {
         typeof expiry !== "string"
       ) {
         return json({ error: "缺少必要字段" }, 400);
+      }
+      // 密钥校验值（可选）：客户端由密钥单向哈希得出，编辑时凭它获得写权
+      let kc: string | null = null;
+      if (rawKc !== undefined) {
+        if (typeof rawKc !== "string" || rawKc === "" || rawKc.length > 64) {
+          return json({ error: "kc 格式错误" }, 400);
+        }
+        kc = rawKc;
       }
       if (!LANGS.has(lang)) {
         return json({ error: "不支持的语言类型" }, 400);
@@ -125,6 +133,7 @@ export default {
         lang,
         created_at: now,
         expires_at: ttl === null ? null : now + ttl * 1000,
+        ...(kc ? { kc } : {}),
       };
 
       const options = ttl === null ? undefined : { expirationTtl: ttl };
@@ -149,12 +158,74 @@ export default {
     if (getMatch && request.method === "GET") {
       const raw = await env.PASTES.get(getMatch[1]);
       if (raw === null) return json({ error: "粘贴不存在或已过期" }, 404);
-      return new Response(raw, {
-        headers: {
-          "content-type": "application/json; charset=utf-8",
-          "cache-control": "no-store",
-        },
-      });
+      // kc 绝不出服务端（否则任何知道 ID 的人读到它就能覆盖密文），只暴露 editable 布尔
+      const record = JSON.parse(raw) as Record<string, unknown>;
+      const editable = typeof record.kc === "string";
+      delete record.kc;
+      return json({ ...record, editable }, 200, { "cache-control": "no-store" });
+    }
+
+    const updateMatch = url.pathname.match(/^\/api\/update\/([A-Za-z0-9_-]{3,32})$/);
+    if (updateMatch && request.method === "PUT") {
+      const id = updateMatch[1];
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "请求体不是合法 JSON" }, 400);
+      }
+      if (typeof body !== "object" || body === null) {
+        return json({ error: "请求体不是合法 JSON" }, 400);
+      }
+      const { ct, iv, lang, kc } = body as Record<string, unknown>;
+      if (
+        typeof ct !== "string" ||
+        typeof iv !== "string" ||
+        typeof lang !== "string" ||
+        typeof kc !== "string"
+      ) {
+        return json({ error: "缺少必要字段" }, 400);
+      }
+      if (!LANGS.has(lang)) {
+        return json({ error: "不支持的语言类型" }, 400);
+      }
+      let ctBytes: Uint8Array;
+      let ivBytes: Uint8Array;
+      try {
+        ctBytes = base64ToBytes(ct);
+        ivBytes = base64ToBytes(iv);
+      } catch {
+        return json({ error: "base64 编码错误" }, 400);
+      }
+      if (ctBytes.length > MAX_CIPHERTEXT_BYTES) {
+        return json({ error: "内容过大" }, 400);
+      }
+      if (ivBytes.length !== 12) {
+        return json({ error: "IV 长度错误" }, 400);
+      }
+
+      const raw = await env.PASTES.get(id);
+      if (raw === null) return json({ error: "粘贴不存在或已过期" }, 404);
+      const record = JSON.parse(raw) as Record<string, unknown>;
+      if (typeof record.kc !== "string") {
+        return json({ error: "旧版本粘贴不支持在线编辑，请重新创建" }, 403);
+      }
+      if (kc !== record.kc) {
+        return json({ error: "密钥校验失败，无权编辑" }, 403);
+      }
+
+      // 重放原 TTL：KV put 不带 TTL 会把过期时间清成永久
+      let options: { expirationTtl: number } | undefined;
+      if (typeof record.expires_at === "number") {
+        const remaining = Math.floor((record.expires_at - Date.now()) / 1000);
+        if (remaining < 60) {
+          return json({ error: "粘贴即将过期，无法编辑" }, 400);
+        }
+        options = { expirationTtl: remaining };
+      }
+      const updated = { ...record, ct, iv, lang, updated_at: Date.now() };
+      await env.PASTES.put(id, JSON.stringify(updated), options);
+      return json({ ok: true });
     }
 
     return json({ error: "not found" }, 404);

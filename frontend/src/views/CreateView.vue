@@ -1,24 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import QRCode from "qrcode";
-import { encryptText } from "../lib/crypto";
+import { encryptText, keyCheck } from "../lib/crypto";
 import { addHistory, clearHistory, loadHistory, removeHistory, type PasteRecord } from "../lib/history";
 import { langLabel } from "../lib/highlight";
+import { LANG_OPTIONS } from "../lib/langs";
 import ThemeToggle from "../components/ThemeToggle.vue";
-
-const LANG_OPTIONS = [
-  { value: "plaintext", label: "纯文本" },
-  { value: "javascript", label: "JavaScript" },
-  { value: "python", label: "Python" },
-  { value: "vue", label: "Vue" },
-  { value: "html", label: "HTML" },
-  { value: "css", label: "CSS" },
-  { value: "json", label: "JSON" },
-  { value: "ini", label: "INI" },
-  { value: "yaml", label: "YAML" },
-  { value: "toml", label: "TOML" },
-  { value: "markdown", label: "Markdown" },
-];
 
 const EXPIRY_OPTIONS = [
   { value: "1h", label: "1 小时" },
@@ -85,6 +72,7 @@ async function create(): Promise<void> {
   creating.value = true;
   try {
     const { ct, iv, keyFragment } = await encryptText(text.value);
+    const kc = await keyCheck(keyFragment);
     const res = await fetch("/api/new", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -93,6 +81,7 @@ async function create(): Promise<void> {
         iv,
         lang: lang.value,
         expiry: expiry.value,
+        kc,
         ...(requestedId ? { id: requestedId } : {}),
       }),
     });

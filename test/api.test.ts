@@ -220,4 +220,137 @@ describe("GET /api/get/:id", () => {
     expect(res.status).toBe(404);
     expect(await res.json()).toMatchObject({ error: "not found" });
   });
+
+  it("GET 返回 editable 标记且绝不泄露 kc", async () => {
+    await env.PASTES.put(
+      "editab01",
+      JSON.stringify({
+        v: 1,
+        ct: "x",
+        iv: "y",
+        lang: "json",
+        created_at: 1,
+        expires_at: null,
+        kc: "super-secret-kc",
+      }),
+    );
+    const res = await SELF.fetch("https://example.com/api/get/editab01");
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).not.toContain("super-secret-kc");
+    const record = JSON.parse(text) as Record<string, unknown>;
+    expect(record.editable).toBe(true);
+  });
+
+  it("GET 旧记录（无 kc）editable 为 false", async () => {
+    await env.PASTES.put(
+      "oldrec01",
+      JSON.stringify({ v: 1, ct: "x", iv: "y", lang: "json", created_at: 1, expires_at: null }),
+    );
+    const res = await SELF.fetch("https://example.com/api/get/oldrec01");
+    const record = (await res.json()) as Record<string, unknown>;
+    expect(record.editable).toBe(false);
+  });
+});
+
+describe("PUT /api/update/:id", () => {
+  afterEach(cleanKv);
+
+  const KC = "test-kc-value-0000000000000000";
+
+  async function seed(kc: string | null, expiresAt: number | null = null): Promise<void> {
+    const record: Record<string, unknown> = {
+      v: 1,
+      ct: "old-ct",
+      iv: "AAECAwQFBgcICQoL",
+      lang: "json",
+      created_at: 1,
+      expires_at: expiresAt,
+    };
+    if (kc) record.kc = kc;
+    await env.PASTES.put("upd0001", JSON.stringify(record));
+  }
+
+  function put(body: unknown): Promise<Response> {
+    return SELF.fetch("https://example.com/api/update/upd0001", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+  }
+
+  it("kc 匹配：更新 ct/iv/lang 并写 updated_at，created_at/kc 不变", async () => {
+    await seed(KC);
+    const res = await put({
+      ct: "AAECAwQFBgcICQ==",
+      iv: "AAECAwQFBgcICQoL",
+      lang: "markdown",
+      kc: KC,
+    });
+    expect(res.status).toBe(200);
+    const stored = JSON.parse((await env.PASTES.get("upd0001"))!) as Record<string, unknown>;
+    expect(stored.ct).toBe("AAECAwQFBgcICQ==");
+    expect(stored.lang).toBe("markdown");
+    expect(stored.created_at).toBe(1);
+    expect(stored.kc).toBe(KC);
+    expect(stored.updated_at).toBeGreaterThan(0);
+  });
+
+  it("永久粘贴编辑后仍无过期时间", async () => {
+    await seed(KC, null);
+    const res = await put({ ct: "new", iv: "AAECAwQFBgcICQoL", lang: "json", kc: KC });
+    expect(res.status).toBe(200);
+    const stored = JSON.parse((await env.PASTES.get("upd0001"))!) as Record<string, unknown>;
+    expect(stored.expires_at).toBeNull();
+  });
+
+  it("TTL 粘贴编辑后原过期时间保持", async () => {
+    const expiresAt = Date.now() + 10 * 60_000;
+    await seed(KC, expiresAt);
+    const res = await put({ ct: "new", iv: "AAECAwQFBgcICQoL", lang: "json", kc: KC });
+    expect(res.status).toBe(200);
+    const stored = JSON.parse((await env.PASTES.get("upd0001"))!) as Record<string, unknown>;
+    expect(stored.expires_at).toBe(expiresAt);
+  });
+
+  it("TTL 剩余不足 60 秒返回 400", async () => {
+    await seed(KC, Date.now() + 30_000);
+    const res = await put({ ct: "new", iv: "AAECAwQFBgcICQoL", lang: "json", kc: KC });
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({ error: "粘贴即将过期，无法编辑" });
+  });
+
+  it("kc 不匹配返回 403 且不修改记录", async () => {
+    await seed(KC);
+    const res = await put({ ct: "evil", iv: "AAECAwQFBgcICQoL", lang: "json", kc: "wrong-kc" });
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({ error: "密钥校验失败，无权编辑" });
+    const stored = JSON.parse((await env.PASTES.get("upd0001"))!) as Record<string, unknown>;
+    expect(stored.ct).toBe("old-ct");
+  });
+
+  it("旧记录（无 kc）返回 403", async () => {
+    await seed(null);
+    const res = await put({ ct: "new", iv: "AAECAwQFBgcICQoL", lang: "json", kc: KC });
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({ error: "旧版本粘贴不支持在线编辑，请重新创建" });
+  });
+
+  it("不存在的 ID 返回 404", async () => {
+    const res = await put({ ct: "new", iv: "AAECAwQFBgcICQoL", lang: "json", kc: KC });
+    expect(res.status).toBe(404);
+  });
+
+  it("非法 lang / 非法 IV / 缺字段 / 非 JSON 请求体均返回 400", async () => {
+    await seed(KC);
+    expect(
+      (await put({ ct: "n", iv: "AAECAwQFBgcICQoL", lang: "rust", kc: KC })).status,
+    ).toBe(400);
+    expect((await put({ ct: "n", iv: "AAAA", lang: "json", kc: KC })).status).toBe(400);
+    expect((await put({ ct: "n", lang: "json", kc: KC })).status).toBe(400);
+    const bad = await SELF.fetch("https://example.com/api/update/upd0001", {
+      method: "PUT",
+      body: "not json",
+    });
+    expect(bad.status).toBe(400);
+  });
 });

@@ -42,6 +42,19 @@ export function removeHistory(id: string): void {
   }
 }
 
+// 就地更新一条历史（如在线编辑后语言变化），记录不存在时静默跳过
+export function patchHistory(id: string, patch: Partial<Omit<PasteRecord, "id" | "key">>): void {
+  const list = loadHistory();
+  const rec = list.find((r) => r.id === id);
+  if (!rec) return;
+  Object.assign(rec, patch);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  } catch {
+    // 同上
+  }
+}
+
 export function clearHistory(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);

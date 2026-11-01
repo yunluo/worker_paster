@@ -1,4 +1,4 @@
-import { decryptText, encryptText } from "../frontend/src/lib/crypto";
+import { decryptText, encryptText, encryptWithKey, keyCheck } from "../frontend/src/lib/crypto";
 import { describe, expect, it } from "vitest";
 
 describe("crypto", () => {
@@ -41,5 +41,30 @@ describe("crypto", () => {
     const text = "😀🀄 mixed emoji 中文 ascii";
     const { ct, iv, keyFragment } = await encryptText(text);
     expect(await decryptText(ct, iv, keyFragment)).toBe(text);
+  });
+});
+
+describe("encryptWithKey / keyCheck（在线编辑）", () => {
+  const KEY = "VOPkPSeNqsKFXUbeMkljMZRaEt0TMG_ig4EVBWlnyhQ"; // 43 位 base64url = 32 字节
+
+  it("encryptWithKey 用原密钥加密后可解密还原", async () => {
+    const { ct, iv } = await encryptWithKey("编辑后的内容\nline2", KEY);
+    await expect(decryptText(ct, iv, KEY)).resolves.toBe("编辑后的内容\nline2");
+  });
+
+  it("keyCheck 稳定：同一密钥两次结果一致", async () => {
+    expect(await keyCheck(KEY)).toBe(await keyCheck(KEY));
+  });
+
+  it("keyCheck 为 22 字符 base64url，且不同密钥结果不同", async () => {
+    const kc = await keyCheck(KEY);
+    expect(kc).toMatch(/^[A-Za-z0-9_-]{22}$/);
+    expect(await keyCheck(KEY.slice(0, 42) + "A")).not.toBe(kc);
+  });
+
+  it("encryptText 生成的密钥同样通过 keyCheck 校验", async () => {
+    const { ct, iv, keyFragment } = await encryptText("x");
+    await expect(decryptText(ct, iv, keyFragment)).resolves.toBe("x");
+    expect(await keyCheck(keyFragment)).toMatch(/^[A-Za-z0-9_-]{22}$/);
   });
 });

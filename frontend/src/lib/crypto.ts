@@ -39,14 +39,29 @@ function fromBase64Url(s: string): Uint8Array<ArrayBuffer> {
 
 export async function encryptText(plaintext: string): Promise<EncryptResult> {
   const rawKey = crypto.getRandomValues(new Uint8Array(32));
+  const keyFragment = toBase64Url(rawKey);
+  const { ct, iv } = await encryptWithKey(plaintext, keyFragment);
+  return { ct, iv, keyFragment };
+}
+
+// 用已有密钥加密（编辑场景：链接与密钥保持不变）
+export async function encryptWithKey(
+  plaintext: string,
+  keyFragment: string,
+): Promise<{ ct: string; iv: string }> {
+  const rawKey = fromBase64Url(keyFragment);
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const key = await crypto.subtle.importKey("raw", rawKey, "AES-GCM", false, ["encrypt"]);
   const ctBuf = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoder.encode(plaintext));
-  return {
-    ct: bytesToBase64(new Uint8Array(ctBuf)),
-    iv: bytesToBase64(iv),
-    keyFragment: toBase64Url(rawKey),
-  };
+  return { ct: bytesToBase64(new Uint8Array(ctBuf)), iv: bytesToBase64(iv) };
+}
+
+// 密钥校验值：SHA-256 前 16 字节 base64url。服务端存它以验证编辑者持钥，
+// 但无法由它反推密钥——"谁能读谁就能改"且不向服务器暴露密钥本体
+export async function keyCheck(keyFragment: string): Promise<string> {
+  const rawKey = fromBase64Url(keyFragment);
+  const digest = await crypto.subtle.digest("SHA-256", rawKey);
+  return toBase64Url(new Uint8Array(digest).slice(0, 16));
 }
 
 export async function decryptText(ct: string, iv: string, keyFragment: string): Promise<string> {
