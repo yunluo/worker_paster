@@ -1,0 +1,5 @@
+{
+  "name": "worker-paster-frontend",
+  "private": true,
+  "type": "module"
+}
