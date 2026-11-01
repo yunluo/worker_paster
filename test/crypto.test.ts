@@ -30,4 +30,16 @@ describe("crypto", () => {
     const { keyFragment } = await encryptText("x");
     expect(keyFragment).toMatch(/^[A-Za-z0-9_-]{43}$/);
   });
+
+  it("1MB 级文本走分块路径仍可往返", async () => {
+    const text = ("const x = 1; 你好\n" + "a".repeat(1024)).repeat(900); // ≈ 0.95MB
+    const { ct, iv, keyFragment } = await encryptText(text);
+    expect(await decryptText(ct, iv, keyFragment)).toBe(text);
+  });
+
+  it("emoji（4 字节 UTF-8）可往返", async () => {
+    const text = "😀🀄 mixed emoji 中文 ascii";
+    const { ct, iv, keyFragment } = await encryptText(text);
+    expect(await decryptText(ct, iv, keyFragment)).toBe(text);
+  });
 });
