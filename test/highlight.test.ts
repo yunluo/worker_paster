@@ -1,4 +1,4 @@
-import { highlight, langLabel } from "../frontend/src/lib/highlight";
+import { highlight, langLabel, MAX_HIGHLIGHT_CHARS } from "../frontend/src/lib/highlight";
 import { describe, expect, it } from "vitest";
 
 describe("highlight", () => {
@@ -28,6 +28,13 @@ describe("highlight", () => {
     const html = highlight("a".repeat(256 * 1024 + 1), "javascript");
     expect(html).not.toContain("hljs");
     expect(html).toBe("a".repeat(256 * 1024 + 1));
+  });
+
+  it("恰好 256K 字符仍高亮（边界语义：> 才跳过）", () => {
+    // 需含关键字才能产生 hljs 标记：纯字母串在 hljs 下不包 span，
+    // 与转义路径输出相同，无法区分是否真的走了高亮
+    const html = highlight("if (".repeat(MAX_HIGHLIGHT_CHARS / 4), "javascript");
+    expect(html).toContain("hljs");
   });
 
   it("grammar 输出不泄漏原始 <script>/<img 标记", () => {

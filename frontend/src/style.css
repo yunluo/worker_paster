@@ -112,11 +112,15 @@ button.primary:disabled {
 }
 
 .gutter {
+  position: sticky;
+  left: 0;
+  flex-shrink: 0;
   padding: 12px 8px;
   text-align: right;
   color: #6b7280;
   user-select: none;
   border-right: 1px solid #21262d;
+  background: #0d1117;
   font-family: ui-monospace, Consolas, monospace;
   line-height: 1.5;
   font-size: 14px;
