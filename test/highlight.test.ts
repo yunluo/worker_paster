@@ -23,4 +23,9 @@ describe("highlight", () => {
     expect(langLabel("plaintext")).toBe("纯文本");
     expect(langLabel("toml")).toBe("TOML");
   });
+
+  it("grammar 输出不泄漏原始 <script>/<img 标记", () => {
+    const html = highlight("</script><img src=x onerror=alert(1)>", "javascript");
+    expect(html).not.toMatch(/<(script|img)\b/i);
+  });
 });
