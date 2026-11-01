@@ -24,6 +24,12 @@ describe("highlight", () => {
     expect(langLabel("toml")).toBe("TOML");
   });
 
+  it("超过 256K 字符跳过高亮，返回转义文本", () => {
+    const html = highlight("a".repeat(256 * 1024 + 1), "javascript");
+    expect(html).not.toContain("hljs");
+    expect(html).toBe("a".repeat(256 * 1024 + 1));
+  });
+
   it("grammar 输出不泄漏原始 <script>/<img 标记", () => {
     const html = highlight("</script><img src=x onerror=alert(1)>", "javascript");
     expect(html).not.toMatch(/<(script|img)\b/i);

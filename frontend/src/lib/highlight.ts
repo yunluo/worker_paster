@@ -7,6 +7,10 @@ import python from "highlight.js/lib/languages/python";
 import xml from "highlight.js/lib/languages/xml";
 import yaml from "highlight.js/lib/languages/yaml";
 
+// 超过该字符数跳过高亮，直接转义展示：1MB 级输入经 hljs 高亮会产生
+// 数 MB 的 HTML 字符串与可感知的卡顿，纯文本展示更稳妥
+export const MAX_HIGHLIGHT_CHARS = 256 * 1024;
+
 hljs.registerLanguage("javascript", javascript);
 hljs.registerLanguage("python", python);
 hljs.registerLanguage("xml", xml);
@@ -43,7 +47,7 @@ function escapeHtml(s: string): string {
 
 export function highlight(code: string, lang: string): string {
   const hljsLang = LANG_MAP[lang]?.hljsLang;
-  if (!hljsLang) return escapeHtml(code);
+  if (!hljsLang || code.length > MAX_HIGHLIGHT_CHARS) return escapeHtml(code);
   try {
     return hljs.highlight(code, { language: hljsLang }).value;
   } catch {
