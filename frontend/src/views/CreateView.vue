@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import QRCode from "qrcode";
 import { encryptText } from "../lib/crypto";
 import { addHistory, clearHistory, loadHistory, removeHistory, type PasteRecord } from "../lib/history";
 import { langLabel } from "../lib/highlight";
@@ -15,6 +16,7 @@ const LANG_OPTIONS = [
   { value: "ini", label: "INI" },
   { value: "yaml", label: "YAML" },
   { value: "toml", label: "TOML" },
+  { value: "markdown", label: "Markdown" },
 ];
 
 const EXPIRY_OPTIONS = [
@@ -42,6 +44,11 @@ const creating = ref(false);
 const error = ref("");
 const shareLink = ref("");
 const history = ref<PasteRecord[]>(loadHistory());
+// 须与 src/index.ts 的 CUSTOM_ID_RE / RESERVED_IDS 保持一致（服务端为权威校验）
+const CUSTOM_ID_RE = /^[A-Za-z0-9_-]{3,32}$/;
+const RESERVED_IDS = new Set(["api", "assets"]);
+const customId = ref("");
+const qr = ref("");
 const showHistory = ref(false);
 
 const textBytes = computed(() => new TextEncoder().encode(text.value).length);
@@ -54,6 +61,7 @@ function expiresAtOf(expiry: string): number | null {
 async function create(): Promise<void> {
   error.value = "";
   shareLink.value = "";
+  qr.value = "";
   if (!text.value) {
     error.value = "内容不能为空";
     return;
@@ -62,13 +70,30 @@ async function create(): Promise<void> {
     error.value = "内容超过 1MB 上限";
     return;
   }
+  const requestedId = customId.value.trim();
+  if (requestedId) {
+    if (!CUSTOM_ID_RE.test(requestedId)) {
+      error.value = "自定义 ID 只能包含字母、数字、-、_，长度 3–32";
+      return;
+    }
+    if (RESERVED_IDS.has(requestedId)) {
+      error.value = "该 ID 为保留字（api / assets），请换一个";
+      return;
+    }
+  }
   creating.value = true;
   try {
     const { ct, iv, keyFragment } = await encryptText(text.value);
     const res = await fetch("/api/new", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ct, iv, lang: lang.value, expiry: expiry.value }),
+      body: JSON.stringify({
+        ct,
+        iv,
+        lang: lang.value,
+        expiry: expiry.value,
+        ...(requestedId ? { id: requestedId } : {}),
+      }),
     });
     if (!res.ok) {
       const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -76,6 +101,11 @@ async function create(): Promise<void> {
     }
     const { id } = (await res.json()) as { id: string };
     shareLink.value = `${location.origin}/${id}#${keyFragment}`;
+    try {
+      qr.value = await QRCode.toDataURL(shareLink.value, { width: 320, margin: 1 });
+    } catch {
+      qr.value = "";
+    }
     addHistory({
       id,
       key: keyFragment,
@@ -129,6 +159,16 @@ function clearAll(): void {
 
     <textarea v-model="text" aria-label="粘贴内容" placeholder="粘贴要分享的文本或代码…"></textarea>
 
+    <input
+      v-model="customId"
+      class="id-input"
+      maxlength="32"
+      spellcheck="false"
+      autocomplete="off"
+      aria-label="自定义 ID（可选）"
+      placeholder="自定义 ID（可选，3–32 位字母/数字/-/_）"
+    />
+
     <div class="row">
       <select v-model="lang" aria-label="语言类型">
         <option v-for="o in LANG_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
@@ -145,6 +185,7 @@ function clearAll(): void {
     <p v-if="error" class="error">{{ error }}</p>
 
     <div v-if="shareLink" class="link-box">
+      <img v-if="qr" :src="qr" alt="分享链接二维码" width="160" height="160" />
       <div>{{ shareLink }}</div>
       <div class="row">
         <button @click="copyShareLink">复制链接</button>

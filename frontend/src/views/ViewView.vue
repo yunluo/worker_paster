@@ -3,6 +3,8 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { decryptText } from "../lib/crypto";
 import { highlight, langLabel } from "../lib/highlight";
+import { renderMarkdown } from "../lib/markdown";
+import { downloadText, fileNameFor } from "../lib/download";
 
 type State = "loading" | "ready" | "nokey" | "notfound" | "decrypterror" | "network";
 
@@ -15,6 +17,9 @@ const expiresAt = ref<number | null>(null);
 
 const lineCount = computed(() => text.value.split("\n").length);
 const html = computed(() => highlight(text.value, lang.value));
+const isMarkdown = computed(() => lang.value === "markdown");
+// renderMarkdown 超过阈值返回 ""，此时回落到下方纯文本代码视图
+const mdHtml = computed(() => (isMarkdown.value ? renderMarkdown(text.value) : ""));
 
 onMounted(load);
 
@@ -69,6 +74,11 @@ async function copyText(): Promise<void> {
   }
 }
 
+function download(): void {
+  const id = String(route.params.id ?? "paste");
+  downloadText(fileNameFor(id, lang.value), text.value);
+}
+
 function fmtTime(ts: number | null): string {
   return ts === null ? "永久" : new Date(ts).toLocaleString();
 }
@@ -100,8 +110,10 @@ function fmtTime(ts: number | null): string {
           创建于 {{ fmtTime(createdAt) }} · 过期：{{ fmtTime(expiresAt) }}
         </span>
         <button @click="copyText">复制原文</button>
+        <button @click="download">下载</button>
       </div>
-      <div class="code-wrap">
+      <div v-if="mdHtml" class="markdown-body" v-html="mdHtml"></div>
+      <div v-else class="code-wrap">
         <div class="gutter">
           <span v-for="n in lineCount" :key="n">{{ n }}</span>
         </div>
