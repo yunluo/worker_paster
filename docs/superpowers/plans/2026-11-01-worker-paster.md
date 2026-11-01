@@ -66,7 +66,7 @@ workspaces 声明让 `bun install` 一次装好根与 frontend 依赖。注意�
   "workspaces": ["frontend"],
   "scripts": {
     "dev": "wrangler dev",
-    "build": "bun --cwd frontend run build",
+    "build": "bun --cwd=frontend run build",
     "deploy": "bun run build && wrangler deploy",
     "test": "vitest run",
     "check": "tsc --noEmit"
@@ -805,10 +805,10 @@ pre.code code {
 
 - [ ] **Step 10: 构建前端验证**
 
-Run: `bun --cwd frontend run build`
+Run: `bun --cwd=frontend run build`
 Expected: 构建成功，生成 `frontend/dist/`。
 
-Run: `bun --cwd frontend run check`
+Run: `bun --cwd=frontend run check`
 Expected: 无类型错误。
 
 - [ ] **Step 11: wrangler.toml 追加 assets 配置**
@@ -1157,7 +1157,7 @@ export function clearHistory(): void {
 
 - [ ] **Step 2: 类型检查**
 
-Run: `bun --cwd frontend run check`
+Run: `bun --cwd=frontend run check`
 Expected: 无错误。
 
 - [ ] **Step 3: Commit**
@@ -1345,10 +1345,10 @@ function clearAll(): void {
 
 - [ ] **Step 2: 构建与类型检查**
 
-Run: `bun --cwd frontend run check`
+Run: `bun --cwd=frontend run check`
 Expected: 无错误。
 
-Run: `bun --cwd frontend run build`
+Run: `bun --cwd=frontend run build`
 Expected: 构建成功。
 
 - [ ] **Step 3: Commit**
@@ -1477,10 +1477,10 @@ function fmtTime(ts: number | null): string {
 
 - [ ] **Step 2: 构建与类型检查**
 
-Run: `bun --cwd frontend run check`
+Run: `bun --cwd=frontend run check`
 Expected: 无错误。
 
-Run: `bun --cwd frontend run build`
+Run: `bun --cwd=frontend run build`
 Expected: 构建成功。
 
 - [ ] **Step 3: 运行全部自动化测试**
@@ -1533,14 +1533,14 @@ bun run build
 bun run dev
 ```
 
-只调前端样式时，可另开一个终端跑 `bun --cwd frontend run dev`（Vite dev server，`/api` 自动代理到 8787）。
+只调前端样式时，可另开一个终端跑 `bun --cwd=frontend run dev`（Vite dev server，`/api` 自动代理到 8787）。
 
 ## 测试
 
 ```bash
 bun run test                      # Worker API + 加密 + 高亮（vitest-pool-workers）
 bun run check                     # Worker 端类型检查
-bun --cwd frontend run check      # 前端类型检查
+bun --cwd=frontend run check      # 前端类型检查
 ```
 
 注意：不要用 `bun test`（bun 自带测试器与本项目 vitest 配置不兼容），一律 `bun run test`。
@@ -1583,7 +1583,7 @@ Expected: `{"error":"粘贴不存在或已过期"}`
 
 - [ ] **Step 3: 验收问题全部修复后，运行全量测试**
 
-Run: `bun run test && bun run check && bun --cwd frontend run check`
+Run: `bun run test && bun run check && bun --cwd=frontend run check`
 Expected: 全部通过。
 
 - [ ] **Step 4: Commit**
