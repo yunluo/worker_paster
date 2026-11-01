@@ -243,3 +243,18 @@ pre.code code {
 .markdown-body img {
   max-width: 100%;
 }
+
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.page-head h1 {
+  margin: 0;
+}
+
+.theme-toggle {
+  white-space: nowrap;
+}
