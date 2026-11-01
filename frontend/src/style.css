@@ -96,6 +96,10 @@ button.primary:disabled {
   font-size: 0.9rem;
 }
 
+.history {
+  margin-top: 24px;
+}
+
 /* 代码查看（背景恒深色，配 github-dark 主题） */
 .code-wrap {
   display: flex;
