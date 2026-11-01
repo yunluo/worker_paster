@@ -141,3 +141,21 @@ pre.code {
 pre.code code {
   white-space: pre;
 }
+
+.id-input {
+  display: block;
+  width: 100%;
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  font: inherit;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--fg);
+}
+
+.link-box img {
+  display: block;
+  margin-bottom: 8px;
+  border-radius: 8px;
+}
