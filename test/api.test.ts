@@ -108,3 +108,33 @@ describe("POST /api/new", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("GET /api/get/:id", () => {
+  afterEach(cleanKv);
+
+  it("返回已存储的记录", async () => {
+    await env.PASTES.put(
+      "abcd1234",
+      JSON.stringify({ v: 1, ct: "x", iv: "y", lang: "json", created_at: 1, expires_at: 2 }),
+    );
+    const res = await SELF.fetch("https://example.com/api/get/abcd1234");
+    expect(res.status).toBe(200);
+    const record = (await res.json()) as Record<string, unknown>;
+    expect(record).toMatchObject({ ct: "x", iv: "y", lang: "json" });
+  });
+
+  it("不存在的 ID 返回 404", async () => {
+    const res = await SELF.fetch("https://example.com/api/get/zzzzzzzz");
+    expect(res.status).toBe(404);
+  });
+
+  it("格式非法的 ID 返回 404", async () => {
+    const res = await SELF.fetch("https://example.com/api/get/short!");
+    expect(res.status).toBe(404);
+  });
+
+  it("9 位 ID 返回 404", async () => {
+    const res = await SELF.fetch("https://example.com/api/get/abcdefghi");
+    expect(res.status).toBe(404);
+  });
+});

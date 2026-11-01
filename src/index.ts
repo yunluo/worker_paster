@@ -122,6 +122,15 @@ export default {
       return json({ error: "ID 生成冲突，请重试" }, 500);
     }
 
+    const getMatch = url.pathname.match(/^\/api\/get\/([0-9A-Za-z]{8})$/);
+    if (getMatch && request.method === "GET") {
+      const raw = await env.PASTES.get(getMatch[1]);
+      if (raw === null) return json({ error: "粘贴不存在或已过期" }, 404);
+      return new Response(raw, {
+        headers: { "content-type": "application/json; charset=utf-8" },
+      });
+    }
+
     return json({ error: "not found" }, 404);
   },
 } satisfies ExportedHandler<Env>;
