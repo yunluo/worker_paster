@@ -34,6 +34,7 @@ const LANG_MAP: Record<string, LangDef> = {
   ini: { hljsLang: "ini", label: "INI" },
   yaml: { hljsLang: "yaml", label: "YAML" },
   toml: { hljsLang: "ini", label: "TOML" },
+  markdown: { hljsLang: "", label: "Markdown" },
   plaintext: { hljsLang: "", label: "纯文本" },
 };
 
@@ -41,7 +42,7 @@ export function langLabel(lang: string): string {
   return LANG_MAP[lang]?.label ?? lang;
 }
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
