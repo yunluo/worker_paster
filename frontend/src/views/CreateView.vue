@@ -85,14 +85,22 @@ async function create(): Promise<void> {
     });
     history.value = loadHistory();
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e);
+    error.value = e instanceof TypeError
+      ? "网络错误，请重试"
+      : e instanceof Error
+        ? e.message
+        : "创建失败，请重试";
   } finally {
     creating.value = false;
   }
 }
 
 async function copyShareLink(): Promise<void> {
-  await navigator.clipboard.writeText(shareLink.value);
+  try {
+    await navigator.clipboard.writeText(shareLink.value);
+  } catch {
+    error.value = "复制失败，请手动复制链接";
+  }
 }
 
 function fullLink(rec: PasteRecord): string {
@@ -119,7 +127,7 @@ function clearAll(): void {
     <h1>worker_paster</h1>
     <p class="muted">零知识云粘贴板：内容在本地加密，服务器只存密文。</p>
 
-    <textarea v-model="text" placeholder="粘贴要分享的文本或代码…"></textarea>
+    <textarea v-model="text" aria-label="粘贴内容" placeholder="粘贴要分享的文本或代码…"></textarea>
 
     <div class="row">
       <select v-model="lang" aria-label="语言类型">
