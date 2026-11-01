@@ -107,6 +107,50 @@ describe("POST /api/new", () => {
     const res = await post("null");
     expect(res.status).toBe(400);
   });
+
+  it("自定义 ID 创建成功并可读回", async () => {
+    const res = await post({ ...VALID_BODY, id: "my-config" });
+    expect(res.status).toBe(200);
+    const { id } = (await res.json()) as { id: string };
+    expect(id).toBe("my-config");
+
+    const get = await SELF.fetch("https://example.com/api/get/my-config");
+    expect(get.status).toBe(200);
+    const record = (await get.json()) as Record<string, unknown>;
+    expect(record.lang).toBe("javascript");
+  });
+
+  it("id 为空字符串时走随机 ID", async () => {
+    const res = await post({ ...VALID_BODY, id: "" });
+    expect(res.status).toBe(200);
+    const { id } = (await res.json()) as { id: string };
+    expect(id).toMatch(/^[0-9A-Za-z]{8}$/);
+  });
+
+  it("自定义 ID 含非法字符返回 400", async () => {
+    for (const bad of ["bad id", "点", "a.b", "bad/id"]) {
+      const res = await post({ ...VALID_BODY, id: bad });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it("自定义 ID 过短或过长返回 400", async () => {
+    expect((await post({ ...VALID_BODY, id: "ab" })).status).toBe(400);
+    expect((await post({ ...VALID_BODY, id: "a".repeat(33) })).status).toBe(400);
+  });
+
+  it("保留字 api / assets 返回 400", async () => {
+    expect((await post({ ...VALID_BODY, id: "api" })).status).toBe(400);
+    expect((await post({ ...VALID_BODY, id: "assets" })).status).toBe(400);
+  });
+
+  it("同 ID 二次创建返回 409", async () => {
+    expect((await post({ ...VALID_BODY, id: "taken-id" })).status).toBe(200);
+    const res = await post({ ...VALID_BODY, id: "taken-id" });
+    expect(res.status).toBe(409);
+    const { error } = (await res.json()) as { error: string };
+    expect(error).toBe("该 ID 已被占用");
+  });
 });
 
 describe("GET /api/get/:id", () => {
@@ -133,9 +177,10 @@ describe("GET /api/get/:id", () => {
     expect(res.status).toBe(404);
   });
 
-  it("9 位 ID 返回 404", async () => {
+  it("9 位 ID 命中 API 路由并返回业务 404", async () => {
     const res = await SELF.fetch("https://example.com/api/get/abcdefghi");
     expect(res.status).toBe(404);
+    expect(await res.json()).toMatchObject({ error: "粘贴不存在或已过期" });
   });
 
   it("合法前缀但超长的 ID 不返回记录", async () => {
@@ -143,8 +188,21 @@ describe("GET /api/get/:id", () => {
       "abcd1234",
       JSON.stringify({ v: 1, ct: "x", iv: "y", lang: "json", created_at: 1, expires_at: 2 }),
     );
-    // 若正则丢失 $ 锚点，/api/get/abcd12345 会截取前 8 位命中记录，此用例用于防回归
+    // 若正则丢失 $ 锚点，/api/get/abcd12345 会截短命中记录，此用例防回归
     const res = await SELF.fetch("https://example.com/api/get/abcd12345");
     expect(res.status).toBe(404);
+    expect(await res.json()).toMatchObject({ error: "粘贴不存在或已过期" });
+  });
+
+  it("3 位 ID 命中 API 路由", async () => {
+    const res = await SELF.fetch("https://example.com/api/get/abc");
+    expect(res.status).toBe(404);
+    expect(await res.json()).toMatchObject({ error: "粘贴不存在或已过期" });
+  });
+
+  it("超过 32 位的 ID 走通用兜底 404", async () => {
+    const res = await SELF.fetch(`https://example.com/api/get/${"a".repeat(33)}`);
+    expect(res.status).toBe(404);
+    expect(await res.json()).toMatchObject({ error: "not found" });
   });
 });

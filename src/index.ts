@@ -28,6 +28,10 @@ const MAX_CIPHERTEXT_BYTES = 1024 * 1024 + 16;
 const ID_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const ID_LENGTH = 8;
 
+// 自定义 ID：3–32 位，字母/数字/-/_；api 与 assets 与 Worker 路由、静态资源目录冲突
+const CUSTOM_ID_RE = /^[A-Za-z0-9_-]{3,32}$/;
+const RESERVED_IDS = new Set(["api", "assets"]);
+
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -70,7 +74,7 @@ export default {
         return json({ error: "请求体不是合法 JSON" }, 400);
       }
 
-      const { ct, iv, lang, expiry } = body as Record<string, unknown>;
+      const { ct, iv, lang, expiry, id: rawId } = body as Record<string, unknown>;
       if (
         typeof ct !== "string" ||
         typeof iv !== "string" ||
@@ -84,6 +88,16 @@ export default {
       }
       if (!Object.hasOwn(EXPIRY_SECONDS, expiry)) {
         return json({ error: "不支持的过期档位" }, 400);
+      }
+
+      const requestedId = typeof rawId === "string" && rawId !== "" ? rawId : null;
+      if (requestedId !== null) {
+        if (!CUSTOM_ID_RE.test(requestedId)) {
+          return json({ error: "自定义 ID 只能包含字母、数字、-、_，长度 3–32" }, 400);
+        }
+        if (RESERVED_IDS.has(requestedId)) {
+          return json({ error: "该 ID 为保留字，请换一个" }, 400);
+        }
       }
 
       let ctBytes: Uint8Array;
@@ -112,17 +126,25 @@ export default {
         expires_at: ttl === null ? null : now + ttl * 1000,
       };
 
+      const options = ttl === null ? undefined : { expirationTtl: ttl };
+      if (requestedId !== null) {
+        // get→put 非原子，极小并发窗口可接受（内部 ≤10 人使用，spec §3 已注明）
+        if ((await env.PASTES.get(requestedId)) !== null) {
+          return json({ error: "该 ID 已被占用" }, 409);
+        }
+        await env.PASTES.put(requestedId, JSON.stringify(record), options);
+        return json({ id: requestedId });
+      }
       for (let attempt = 0; attempt < 5; attempt++) {
         const id = randomId();
         if ((await env.PASTES.get(id)) !== null) continue; // ID 碰撞重试
-        const options = ttl === null ? undefined : { expirationTtl: ttl };
         await env.PASTES.put(id, JSON.stringify(record), options);
         return json({ id });
       }
       return json({ error: "ID 生成冲突，请重试" }, 500);
     }
 
-    const getMatch = url.pathname.match(/^\/api\/get\/([0-9A-Za-z]{8})$/);
+    const getMatch = url.pathname.match(/^\/api\/get\/([A-Za-z0-9_-]{3,32})$/);
     if (getMatch && request.method === "GET") {
       const raw = await env.PASTES.get(getMatch[1]);
       if (raw === null) return json({ error: "粘贴不存在或已过期" }, 404);
