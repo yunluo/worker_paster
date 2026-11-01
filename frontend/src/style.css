@@ -1,0 +1,135 @@
+:root {
+  color-scheme: light dark;
+  --bg: #fafafa;
+  --fg: #1a1a1a;
+  --muted: #6b7280;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --accent: #2563eb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111827;
+    --fg: #f3f4f6;
+    --muted: #9ca3af;
+    --card: #1f2937;
+    --border: #374151;
+    --accent: #60a5fa;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.container {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+textarea,
+select,
+button {
+  font: inherit;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--fg);
+}
+
+textarea {
+  width: 100%;
+  min-height: 240px;
+  padding: 12px;
+  resize: vertical;
+}
+
+button {
+  cursor: pointer;
+  padding: 8px 16px;
+}
+
+button.primary {
+  background: var(--accent);
+  border: none;
+  color: #ffffff;
+  padding: 8px 20px;
+}
+
+button.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.error {
+  color: #ef4444;
+}
+
+.link-box {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  word-break: break-all;
+  margin: 12px 0;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* 代码查看（背景恒深色，配 github-dark 主题） */
+.code-wrap {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: auto;
+  background: #0d1117;
+  color: #e6edf3;
+  max-height: 70vh;
+}
+
+.gutter {
+  padding: 12px 8px;
+  text-align: right;
+  color: #6b7280;
+  user-select: none;
+  border-right: 1px solid #21262d;
+  font-family: ui-monospace, Consolas, monospace;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.gutter span {
+  display: block;
+}
+
+pre.code {
+  margin: 0;
+  padding: 12px;
+  font-family: ui-monospace, Consolas, monospace;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+pre.code code {
+  white-space: pre;
+}
