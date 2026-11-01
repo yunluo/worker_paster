@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --bg: #fafafa;
   --fg: #1a1a1a;
   --muted: #6b7280;
@@ -9,7 +9,8 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --bg: #111827;
     --fg: #f3f4f6;
     --muted: #9ca3af;
@@ -17,6 +18,17 @@
     --border: #374151;
     --accent: #60a5fa;
   }
+}
+
+/* 深色变量在本块与上方媒体查询中各一份，修改需同步两处 */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111827;
+  --fg: #f3f4f6;
+  --muted: #9ca3af;
+  --card: #1f2937;
+  --border: #374151;
+  --accent: #60a5fa;
 }
 
 * {
@@ -230,4 +242,20 @@ pre.code code {
 
 .markdown-body img {
   max-width: 100%;
+}
+
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.page-head h1 {
+  margin: 0;
+}
+
+.theme-toggle {
+  white-space: nowrap;
 }

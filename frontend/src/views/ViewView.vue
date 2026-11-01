@@ -5,6 +5,7 @@ import { decryptText } from "../lib/crypto";
 import { highlight, langLabel } from "../lib/highlight";
 import { renderMarkdown } from "../lib/markdown";
 import { downloadText, fileNameFor } from "../lib/download";
+import ThemeToggle from "../components/ThemeToggle.vue";
 
 type State = "loading" | "ready" | "nokey" | "notfound" | "decrypterror" | "network";
 
@@ -111,6 +112,7 @@ function fmtTime(ts: number | null): string {
         </span>
         <button @click="copyText">复制原文</button>
         <button @click="download">下载</button>
+        <ThemeToggle />
       </div>
       <div v-if="mdHtml" class="markdown-body" v-html="mdHtml"></div>
       <div v-else class="code-wrap">

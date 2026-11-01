@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import { encryptText } from "../lib/crypto";
 import { addHistory, clearHistory, loadHistory, removeHistory, type PasteRecord } from "../lib/history";
 import { langLabel } from "../lib/highlight";
+import ThemeToggle from "../components/ThemeToggle.vue";
 
 const LANG_OPTIONS = [
   { value: "plaintext", label: "纯文本" },
@@ -154,7 +155,10 @@ function clearAll(): void {
 
 <template>
   <div class="container">
-    <h1>worker_paster</h1>
+    <div class="page-head">
+      <h1>worker_paster</h1>
+      <ThemeToggle />
+    </div>
     <p class="muted">零知识云粘贴板：内容在本地加密，服务器只存密文。</p>
 
     <textarea v-model="text" aria-label="粘贴内容" placeholder="粘贴要分享的文本或代码…"></textarea>
