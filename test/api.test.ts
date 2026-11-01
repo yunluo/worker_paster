@@ -120,6 +120,13 @@ describe("POST /api/new", () => {
     expect(record.lang).toBe("javascript");
   });
 
+  it("自定义 ID 允许下划线", async () => {
+    const res = await post({ ...VALID_BODY, id: "a_b" });
+    expect(res.status).toBe(200);
+    const { id } = (await res.json()) as { id: string };
+    expect(id).toBe("a_b");
+  });
+
   it("id 为空字符串时走随机 ID", async () => {
     const res = await post({ ...VALID_BODY, id: "" });
     expect(res.status).toBe(200);
