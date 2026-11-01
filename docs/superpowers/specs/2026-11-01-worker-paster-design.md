@@ -110,9 +110,9 @@ KV：
 
 ### GET /api/get/:id
 
-- 命中：`200` 返回 KV 中的 JSON
-- 不存在或已过期：统一 `404 { "error": "not found" }`（KV 已自动删除过期数据，无需区分）
-- ID 非法字符返回 `404`
+- 命中：`200` 返回 KV 中的 JSON（响应头带 `cache-control: no-store`，密文不落任何中间缓存）
+- 不存在或已过期：统一 `404 { "error": "粘贴不存在或已过期" }`（KV 已自动删除过期数据，无需区分）
+- ID 格式非法（非 8 位 base62）走 Worker 通用兜底 `404 { "error": "not found" }`
 
 ### 头部
 

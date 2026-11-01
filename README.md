@@ -9,7 +9,7 @@
 
 ## 环境要求
 
-- [bun](https://bun.sh) ≥ 1.1（包管理器与脚本入口）
+- [bun](https://bun.sh) ≥ 1.2（包管理器与脚本入口；1.2 起才有文本格式 `bun.lock`）
 - Node.js ≥ 20（vitest / wrangler 运行时）
 - 一个 Cloudflare 账号（部署时需要 `wrangler login`）
 

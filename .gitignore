@@ -2,3 +2,6 @@ node_modules/
 frontend/dist/
 .wrangler/
 .idea/
+.dev.vars
+.DS_Store
+*.log
