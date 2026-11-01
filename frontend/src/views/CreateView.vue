@@ -44,6 +44,7 @@ const creating = ref(false);
 const error = ref("");
 const shareLink = ref("");
 const history = ref<PasteRecord[]>(loadHistory());
+// 须与 src/index.ts 的 CUSTOM_ID_RE / RESERVED_IDS 保持一致（服务端为权威校验）
 const CUSTOM_ID_RE = /^[A-Za-z0-9_-]{3,32}$/;
 const RESERVED_IDS = new Set(["api", "assets"]);
 const customId = ref("");
@@ -101,7 +102,7 @@ async function create(): Promise<void> {
     const { id } = (await res.json()) as { id: string };
     shareLink.value = `${location.origin}/${id}#${keyFragment}`;
     try {
-      qr.value = await QRCode.toDataURL(shareLink.value, { width: 160, margin: 1 });
+      qr.value = await QRCode.toDataURL(shareLink.value, { width: 320, margin: 1 });
     } catch {
       qr.value = "";
     }
@@ -161,6 +162,9 @@ function clearAll(): void {
     <input
       v-model="customId"
       class="id-input"
+      maxlength="32"
+      spellcheck="false"
+      autocomplete="off"
       aria-label="自定义 ID（可选）"
       placeholder="自定义 ID（可选，3–32 位字母/数字/-/_）"
     />
