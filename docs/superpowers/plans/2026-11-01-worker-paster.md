@@ -6,14 +6,14 @@
 
 **Architecture:** 单 Worker 同时承载 `/api/*` JSON 接口与 Vue 3 SPA 静态资源（Workers Static Assets，SPA fallback）。服务端只存密文 blob（KV，写入时设置 `expirationTtl`），密钥只存在于链接 `#` 后的 fragment 中，永不发送到服务器。
 
-**Tech Stack:** Cloudflare Workers + KV + Static Assets、wrangler 4、TypeScript、Vue 3 + Vue Router + Vite、highlight.js、Vitest + @cloudflare/vitest-pool-workers。
+**Tech Stack:** Cloudflare Workers + KV + Static Assets、wrangler 4、TypeScript、Vue 3 + Vue Router + Vite、highlight.js、Vitest + @cloudflare/vitest-pool-workers。包管理器：**bun**（workspaces 一次安装根与 frontend 依赖）。
 
 **规格文档：** `docs/superpowers/specs/2026-11-01-worker-paster-design.md`
 
 **环境注意：**
-- Windows（cmd shell）。npm 命令用 `npm --prefix frontend ...` 形式，避免 `cd`。
-- Node ≥ 20。
-- 若 `npm install` 出现 peer 依赖冲突（vitest 与 @cloudflare/vitest-pool-workers 版本不匹配），按 npm 报错提示的版本范围调整 `package.json` 后重装。
+- Windows（cmd shell）。Node ≥ 20 仍需安装（vitest / wrangler 运行时），bun（≥ 1.1）作为包管理器与脚本入口。
+- **严禁使用 `bun test`**——bun 自带测试器与 vitest-pool-workers 不兼容。跑测试一律 `bun run test`（等价 vitest run），单文件用 `bunx vitest run <file>`。
+- 若 `bun install` 出现 peer 依赖冲突（vitest 与 @cloudflare/vitest-pool-workers 版本不匹配），按报错提示的版本范围调整 package.json 后重装。
 
 ---
 
@@ -48,22 +48,25 @@ compatibility_date = "2026-10-01"
 
 [[kv_namespaces]]
 binding = "PASTES"
-# 本地开发/测试用占位 ID；部署前用 `npx wrangler kv namespace create PASTES`
+# 本地开发/测试用占位 ID；部署前用 `bunx wrangler kv namespace create PASTES`
 # 返回的真实 ID 替换（见 Task 10）
 id = "00000000000000000000000000000000"
 ```
 
 - [ ] **Step 3: 写根 package.json**
 
+workspaces 声明让 `bun install` 一次装好根与 frontend 依赖（frontend/package.json 在 Task 4 创建，workspaces 指向尚不存在的目录不会报错）：
+
 ```json
 {
   "name": "worker_paster",
   "private": true,
   "type": "module",
+  "workspaces": ["frontend"],
   "scripts": {
     "dev": "wrangler dev",
-    "build": "npm --prefix frontend run build",
-    "deploy": "npm run build && wrangler deploy",
+    "build": "bun --cwd frontend run build",
+    "deploy": "bun run build && wrangler deploy",
     "test": "vitest run",
     "check": "tsc --noEmit"
   },
@@ -79,8 +82,8 @@ id = "00000000000000000000000000000000"
 
 然后安装依赖：
 
-Run: `npm install`
-Expected: 安装成功，无 peer 报错（有冲突时按环境注意调整版本）。
+Run: `bun install`
+Expected: 安装成功，无 peer 报错。若出现 peer 依赖冲突，按 npm/bun 报错提示的版本范围调整 package.json 后重装，并在报告中说明实际安装的版本。
 
 - [ ] **Step 4: 写根 tsconfig.json**
 
@@ -153,20 +156,22 @@ it("KV 绑定 PASTES 可用", async () => {
 
 - [ ] **Step 8: 运行测试**
 
-Run: `npm test`
+Run: `bun run test`
 Expected: 1 passed。若报 "cloudflare:test" 解析失败，确认 `@cloudflare/vitest-pool-workers` 已安装且 tsconfig `types` 包含它。
 
 - [ ] **Step 9: 类型检查**
 
-Run: `npm run check`
+Run: `bun run check`
 Expected: 无错误。
 
 - [ ] **Step 10: Commit**
 
 ```bash
-git add .gitignore wrangler.toml package.json package-lock.json tsconfig.json vitest.config.ts src/index.ts test/env.test.ts
+git add .gitignore wrangler.toml package.json bun.lock tsconfig.json vitest.config.ts src/index.ts test/env.test.ts
 git commit -m "chore: scaffold worker project with vitest-pool-workers"
 ```
+
+注：bun 生成的锁文件为 `bun.lock`（文本）；若本机 bun 版本生成 `bun.lockb`（二进制），则提交 `bun.lockb`。
 
 ---
 
@@ -283,7 +288,7 @@ describe("POST /api/new", () => {
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run: `npx vitest run test/api.test.ts`
+Run: `bunx vitest run test/api.test.ts`
 Expected: 全部 FAIL（骨架对 /api/new 返回 404）。
 
 - [ ] **Step 3: 在 src/index.ts 实现 POST /api/new**
@@ -413,7 +418,7 @@ export default {
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run: `npm test`
+Run: `bun run test`
 Expected: 全部 PASS（含 Task 1 的冒烟测试）。
 
 - [ ] **Step 5: Commit**
@@ -467,7 +472,7 @@ describe("GET /api/get/:id", () => {
 
 - [ ] **Step 2: 运行测试确认新用例失败**
 
-Run: `npx vitest run test/api.test.ts`
+Run: `bunx vitest run test/api.test.ts`
 Expected: GET 部分 FAIL，POST 部分 PASS。
 
 - [ ] **Step 3: 在 src/index.ts 的 fetch 中、`return json({ error: "not found" }, 404);` 之前插入 GET 分支**
@@ -485,7 +490,7 @@ Expected: GET 部分 FAIL，POST 部分 PASS。
 
 - [ ] **Step 4: 运行全部测试**
 
-Run: `npm test`
+Run: `bun run test`
 Expected: 全部 PASS。
 
 - [ ] **Step 5: Commit**
@@ -538,8 +543,8 @@ git commit -m "feat: GET /api/get/:id"
 }
 ```
 
-Run: `npm --prefix frontend install`
-Expected: 安装成功。
+Run: `bun install`
+Expected: 安装成功（workspaces 一次安装根与 frontend 依赖）。
 
 - [ ] **Step 2: 写 frontend/vite.config.ts**
 
@@ -799,10 +804,10 @@ pre.code code {
 
 - [ ] **Step 10: 构建前端验证**
 
-Run: `npm --prefix frontend run build`
+Run: `bun --cwd frontend run build`
 Expected: 构建成功，生成 `frontend/dist/`。
 
-Run: `npm --prefix frontend run check`
+Run: `bun --cwd frontend run check`
 Expected: 无类型错误。
 
 - [ ] **Step 11: wrangler.toml 追加 assets 配置**
@@ -818,7 +823,7 @@ run_worker_first = ["/api/*"]
 
 - [ ] **Step 12: 本地起 Worker 验证静态资源与 SPA fallback**
 
-后台运行 `npm run dev`（wrangler dev，默认端口 8787），然后：
+后台运行 `bun run dev`（wrangler dev，默认端口 8787），然后：
 
 Run: `curl -s http://127.0.0.1:8787/`
 Expected: 返回 HTML，含 `<div id="app">`。
@@ -834,7 +839,7 @@ Expected: `{"error":"粘贴不存在或已过期"}`（404，走 Worker）。
 - [ ] **Step 13: Commit**
 
 ```bash
-git add frontend/package.json frontend/package-lock.json frontend/vite.config.ts frontend/tsconfig.json frontend/index.html frontend/src wrangler.toml
+git add frontend/package.json frontend/vite.config.ts frontend/tsconfig.json frontend/index.html frontend/src wrangler.toml bun.lock
 git commit -m "feat: Vue 3 + Vite frontend scaffold served as static assets"
 ```
 
@@ -888,7 +893,7 @@ describe("crypto", () => {
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run: `npx vitest run test/crypto.test.ts`
+Run: `bunx vitest run test/crypto.test.ts`
 Expected: FAIL（模块不存在）。
 
 - [ ] **Step 3: 写 frontend/src/lib/crypto.ts**
@@ -959,7 +964,7 @@ export async function decryptText(ct: string, iv: string, keyFragment: string): 
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run: `npm test`
+Run: `bun run test`
 Expected: 全部 PASS。
 
 - [ ] **Step 5: Commit**
@@ -1010,7 +1015,7 @@ describe("highlight", () => {
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run: `npx vitest run test/highlight.test.ts`
+Run: `bunx vitest run test/highlight.test.ts`
 Expected: FAIL（模块不存在）。
 
 - [ ] **Step 3: 写 frontend/src/lib/highlight.ts**
@@ -1074,7 +1079,7 @@ export function highlight(code: string, lang: string): string {
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run: `npm test`
+Run: `bun run test`
 Expected: 全部 PASS。
 
 - [ ] **Step 5: Commit**
@@ -1151,7 +1156,7 @@ export function clearHistory(): void {
 
 - [ ] **Step 2: 类型检查**
 
-Run: `npm --prefix frontend run check`
+Run: `bun --cwd frontend run check`
 Expected: 无错误。
 
 - [ ] **Step 3: Commit**
@@ -1339,10 +1344,10 @@ function clearAll(): void {
 
 - [ ] **Step 2: 构建与类型检查**
 
-Run: `npm --prefix frontend run check`
+Run: `bun --cwd frontend run check`
 Expected: 无错误。
 
-Run: `npm --prefix frontend run build`
+Run: `bun --cwd frontend run build`
 Expected: 构建成功。
 
 - [ ] **Step 3: Commit**
@@ -1471,15 +1476,15 @@ function fmtTime(ts: number | null): string {
 
 - [ ] **Step 2: 构建与类型检查**
 
-Run: `npm --prefix frontend run check`
+Run: `bun --cwd frontend run check`
 Expected: 无错误。
 
-Run: `npm --prefix frontend run build`
+Run: `bun --cwd frontend run build`
 Expected: 构建成功。
 
 - [ ] **Step 3: 运行全部自动化测试**
 
-Run: `npm test`
+Run: `bun run test`
 Expected: 全部 PASS。
 
 - [ ] **Step 4: Commit**
@@ -1510,40 +1515,42 @@ git commit -m "feat: view page with decryption, highlight and line numbers"
 
 ## 环境要求
 
-- Node.js ≥ 20
+- [bun](https://bun.sh) ≥ 1.1（包管理器与脚本入口）
+- Node.js ≥ 20（vitest / wrangler 运行时）
 - 一个 Cloudflare 账号（部署时需要 `wrangler login`）
 
 ## 本地开发
 
 ```bash
-# 1. 安装依赖
-npm install
-npm --prefix frontend install
+# 1. 安装依赖（workspaces 一次装好根与 frontend）
+bun install
 
 # 2. 构建前端（wrangler dev 需要 frontend/dist 存在）
-npm run build
+bun run build
 
 # 3. 启动 Worker（API + 静态资源，http://127.0.0.1:8787）
-npm run dev
+bun run dev
 ```
 
-只调前端样式时，可另开一个终端跑 `npm --prefix frontend run dev`（Vite dev server，`/api` 自动代理到 8787）。
+只调前端样式时，可另开一个终端跑 `bun --cwd frontend run dev`（Vite dev server，`/api` 自动代理到 8787）。
 
 ## 测试
 
 ```bash
-npm test              # Worker API + 加密 + 高亮（vitest-pool-workers）
-npm run check         # Worker 端类型检查
-npm --prefix frontend run check   # 前端类型检查
+bun run test                      # Worker API + 加密 + 高亮（vitest-pool-workers）
+bun run check                     # Worker 端类型检查
+bun --cwd frontend run check      # 前端类型检查
 ```
+
+注意：不要用 `bun test`（bun 自带测试器与本项目 vitest 配置不兼容），一律 `bun run test`。
 
 ## 部署
 
 ```bash
-npx wrangler login
-npx wrangler kv namespace create PASTES
+bunx wrangler login
+bunx wrangler kv namespace create PASTES
 # 把命令输出的 id 填入 wrangler.toml 的 kv_namespaces.id
-npm run deploy        # 构建前端 + wrangler deploy
+bun run deploy        # 构建前端 + wrangler deploy
 ```
 
 部署后访问 workers.dev 域名即可使用，也可在 Cloudflare 控制台绑定自定义域名。
@@ -1557,7 +1564,7 @@ npm run deploy        # 构建前端 + wrangler deploy
 
 - [ ] **Step 2: 手动验收（wrangler dev 起本地环境）**
 
-后台运行 `npm run dev`，按规格 §10 清单逐项验收：
+后台运行 `bun run dev`，按规格 §10 清单逐项验收：
 
 1. 浏览器打开 `http://127.0.0.1:8787/` → 输入一段 JavaScript 代码，语言选 JavaScript，过期选 1 天，点创建 → 显示分享链接
 2. 打开分享链接 → 内容一致、高亮正确、行号显示、复制原文可用
@@ -1575,7 +1582,7 @@ Expected: `{"error":"粘贴不存在或已过期"}`
 
 - [ ] **Step 3: 验收问题全部修复后，运行全量测试**
 
-Run: `npm test && npm run check && npm --prefix frontend run check`
+Run: `bun run test && bun run check && bun --cwd frontend run check`
 Expected: 全部通过。
 
 - [ ] **Step 4: Commit**
@@ -1590,10 +1597,10 @@ git commit -m "docs: add README with dev, test and deploy instructions"
 需要 Cloudflare 账号登录，由用户执行：
 
 ```bash
-npx wrangler login
-npx wrangler kv namespace create PASTES
+bunx wrangler login
+bunx wrangler kv namespace create PASTES
 # 编辑 wrangler.toml：id 替换为真实 namespace id
-npm run deploy
+bun run deploy
 ```
 
 部署后在线上按 Task 10 Step 2 的清单 1-6 再走一遍（线上域名）。
