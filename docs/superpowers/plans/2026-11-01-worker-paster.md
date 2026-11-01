@@ -195,7 +195,7 @@ declare module "cloudflare:test" {
 
 const VALID_BODY = {
   ct: "AAECAwQFBgcICQ==", // 10 字节 base64
-  iv: "AAECAwQFBgcI", // 12 字节 base64
+  iv: "AAECAwQFBgcICQoL", // 12 字节 base64（16 个 base64 字符）
   lang: "javascript",
   expiry: "7d",
 };
