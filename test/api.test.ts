@@ -151,6 +151,14 @@ describe("POST /api/new", () => {
     const { error } = (await res.json()) as { error: string };
     expect(error).toBe("该 ID 已被占用");
   });
+
+  it("lang markdown 创建成功", async () => {
+    const res = await post({ ...VALID_BODY, lang: "markdown" });
+    expect(res.status).toBe(200);
+    const { id } = (await res.json()) as { id: string };
+    const record = JSON.parse((await env.PASTES.get(id))!) as Record<string, unknown>;
+    expect(record.lang).toBe("markdown");
+  });
 });
 
 describe("GET /api/get/:id", () => {

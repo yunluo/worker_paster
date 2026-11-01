@@ -12,6 +12,7 @@ const LANGS = new Set([
   "ini",
   "yaml",
   "toml",
+  "markdown",
   "plaintext",
 ]);
 
