@@ -156,7 +156,7 @@ function clearAll(): void {
 <template>
   <div class="container">
     <div class="page-head">
-      <h1>worker_paster</h1>
+      <h1>Paster</h1>
       <ThemeToggle />
     </div>
     <p class="muted">零知识云粘贴板：内容在本地加密，服务器只存密文。</p>
