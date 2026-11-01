@@ -127,7 +127,10 @@ export default {
       const raw = await env.PASTES.get(getMatch[1]);
       if (raw === null) return json({ error: "粘贴不存在或已过期" }, 404);
       return new Response(raw, {
-        headers: { "content-type": "application/json; charset=utf-8" },
+        headers: {
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "no-store",
+        },
       });
     }
 

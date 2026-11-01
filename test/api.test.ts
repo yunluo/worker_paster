@@ -137,4 +137,14 @@ describe("GET /api/get/:id", () => {
     const res = await SELF.fetch("https://example.com/api/get/abcdefghi");
     expect(res.status).toBe(404);
   });
+
+  it("合法前缀但超长的 ID 不返回记录", async () => {
+    await env.PASTES.put(
+      "abcd1234",
+      JSON.stringify({ v: 1, ct: "x", iv: "y", lang: "json", created_at: 1, expires_at: 2 }),
+    );
+    // 若正则丢失 $ 锚点，/api/get/abcd12345 会截取前 8 位命中记录，此用例用于防回归
+    const res = await SELF.fetch("https://example.com/api/get/abcd12345");
+    expect(res.status).toBe(404);
+  });
 });
