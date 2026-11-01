@@ -1,5 +1,6 @@
 export type ThemeChoice = "light" | "dark" | "system";
 
+// 与 frontend/index.html 内联防闪烁脚本读取同一个键
 const STORAGE_KEY = "worker_paster_theme";
 const CHOICES: ThemeChoice[] = ["light", "dark", "system"];
 

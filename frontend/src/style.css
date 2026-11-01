@@ -8,17 +8,6 @@
   --accent: #2563eb;
 }
 
-/* 深色变量在本块与下方媒体查询中各一份，修改需同步两处 */
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #111827;
-  --fg: #f3f4f6;
-  --muted: #9ca3af;
-  --card: #1f2937;
-  --border: #374151;
-  --accent: #60a5fa;
-}
-
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
@@ -29,6 +18,17 @@
     --border: #374151;
     --accent: #60a5fa;
   }
+}
+
+/* 深色变量在本块与上方媒体查询中各一份，修改需同步两处 */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111827;
+  --fg: #f3f4f6;
+  --muted: #9ca3af;
+  --card: #1f2937;
+  --border: #374151;
+  --accent: #60a5fa;
 }
 
 * {
@@ -248,6 +248,7 @@ pre.code code {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
