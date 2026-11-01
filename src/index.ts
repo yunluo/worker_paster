@@ -36,9 +36,15 @@ function json(data: unknown, status = 200): Response {
 }
 
 function randomId(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(ID_LENGTH));
   let id = "";
-  for (const b of bytes) id += ID_ALPHABET[b % ID_ALPHABET.length];
+  while (id.length < ID_LENGTH) {
+    const bytes = crypto.getRandomValues(new Uint8Array(ID_LENGTH));
+    for (const b of bytes) {
+      if (b >= 248) continue; // 62 * 4 = 248，拒绝采样消除取模偏差
+      id += ID_ALPHABET[b % ID_ALPHABET.length];
+      if (id.length === ID_LENGTH) break;
+    }
+  }
   return id;
 }
 
@@ -54,14 +60,17 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/api/new" && request.method === "POST") {
-      let body: Record<string, unknown>;
+      let body: unknown;
       try {
-        body = (await request.json()) as Record<string, unknown>;
+        body = await request.json();
       } catch {
         return json({ error: "请求体不是合法 JSON" }, 400);
       }
+      if (typeof body !== "object" || body === null) {
+        return json({ error: "请求体不是合法 JSON" }, 400);
+      }
 
-      const { ct, iv, lang, expiry } = body;
+      const { ct, iv, lang, expiry } = body as Record<string, unknown>;
       if (
         typeof ct !== "string" ||
         typeof iv !== "string" ||
@@ -73,7 +82,7 @@ export default {
       if (!LANGS.has(lang)) {
         return json({ error: "不支持的语言类型" }, 400);
       }
-      if (!(expiry in EXPIRY_SECONDS)) {
+      if (!Object.hasOwn(EXPIRY_SECONDS, expiry)) {
         return json({ error: "不支持的过期档位" }, 400);
       }
 

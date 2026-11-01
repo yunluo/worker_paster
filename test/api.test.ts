@@ -97,4 +97,14 @@ describe("POST /api/new", () => {
     const res = await post({ ct: "x", iv: "y" });
     expect(res.status).toBe(400);
   });
+
+  it("expiry 传 Object.prototype 属性名返回 400", async () => {
+    const res = await post({ ...VALID_BODY, expiry: "toString" });
+    expect(res.status).toBe(400);
+  });
+
+  it("请求体为 JSON null 返回 400", async () => {
+    const res = await post("null");
+    expect(res.status).toBe(400);
+  });
 });
