@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { decryptText } from "../lib/crypto";
 import { highlight, langLabel } from "../lib/highlight";
@@ -17,6 +17,9 @@ const lineCount = computed(() => text.value.split("\n").length);
 const html = computed(() => highlight(text.value, lang.value));
 
 onMounted(load);
+
+// 仅 hash 变化（如先打开 /id 后补 #密钥）不会重新挂载组件，侦听路由变化重跑加载
+watch(() => route.fullPath, load);
 
 async function load(): Promise<void> {
   state.value = "loading";
