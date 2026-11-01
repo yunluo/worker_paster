@@ -14,6 +14,7 @@
 - Windows（cmd shell）。Node ≥ 20 仍需安装（vitest / wrangler 运行时），bun（≥ 1.1）作为包管理器与脚本入口。
 - **严禁使用 `bun test`**——bun 自带测试器与 vitest-pool-workers 不兼容。跑测试一律 `bun run test`（等价 vitest run），单文件用 `bunx vitest run <file>`。
 - 若 `bun install` 出现 peer 依赖冲突（vitest 与 @cloudflare/vitest-pool-workers 版本不匹配），按报错提示的版本范围调整 package.json 后重装。
+- 运行测试前需要 `frontend/dist` 存在（Task 4 之后由 `bun run build` 生成；fresh clone 先构建再 `bun run test`），因为 vitest-pool-workers 读取 wrangler.toml 的 [assets] 配置时需要该目录。
 - **已接受的偏差**（Task 1 质量审查记录）：vitest-pool-workers@0.8.x 内置的 workerd（2025-09）比根 wrangler 4.15x 自带的 workerd（2026-10）旧，测试时 compatibility date 会降级为 2025-09-06 并打印 `[mf:warn]`。本项目只使用 KV/fetch/WebCrypto 等长期稳定 API、无 compat flag 依赖，行为无差异，暂不迁移到已改名的 `@cloudflare/vitest-plugin`；测试运行后的 miniflare EBUSY 临时目录清理告警为 Windows 已知噪音，可忽略。
 
 ---
@@ -1538,12 +1539,12 @@ bun run dev
 ## 测试
 
 ```bash
-bun run test                      # Worker API + 加密 + 高亮（vitest-pool-workers）
+bun run test                      # Worker API + 加密 + 高亮 + 静态资源冒烟（vitest-pool-workers）
 bun run check                     # Worker 端类型检查
 bun --cwd=frontend run check      # 前端类型检查
 ```
 
-注意：不要用 `bun test`（bun 自带测试器与本项目 vitest 配置不兼容），一律 `bun run test`。
+注意：不要用 `bun test`（bun 自带测试器与本项目 vitest 配置不兼容），一律 `bun run test`。fresh clone 上首次跑测试前先 `bun run build`（assets 冒烟测试需要 `frontend/dist` 存在）。
 
 ## 部署
 
