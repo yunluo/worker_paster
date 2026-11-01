@@ -117,7 +117,7 @@ KV：
 ### 头部
 
 - API 响应统一 `Content-Type: application/json; charset=utf-8`
-- `POST /api/new` 校验 `Content-Type` 为 JSON
+- 请求体直接按 JSON 解析，解析失败返回 400（不校验请求 Content-Type 头）
 
 ## 7. 前端
 
@@ -129,7 +129,7 @@ KV：
 - 语言类型下拉：`javascript` / `python` / `vue` / `css` / `html` / `json` / `ini` / `yaml` / `toml` / `plaintext`
 - 过期时间选择：1小时 / 1天 / 7天 / 30天 / 永久
 - 创建按钮 → 展示分享链接 + 复制按钮
-- 「我的记录」：创建过的链接（ID、语言、过期时间）存入浏览器 localStorage，首页下方折叠展示，可单条删除或一键清空。仅存本地，换设备/清缓存即消失
+- 「我的记录」：创建过的完整链接（含 # 密钥、ID、语言、过期时间）存入浏览器 localStorage，首页下方折叠展示，可单条删除或一键清空；链接包含密钥，换设备/清缓存即消失，仅本机可用
 
 **查看页（`/:id`）**：
 
