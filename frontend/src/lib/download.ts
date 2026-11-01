@@ -17,7 +17,8 @@ export function extFor(lang: string): string {
 }
 
 export function fileNameFor(id: string, lang: string): string {
-  return `${id}.${extFor(lang)}`;
+  const safeId = id.replace(/[^A-Za-z0-9_-]/g, "_") || "paste";
+  return `${safeId}.${extFor(lang)}`;
 }
 
 // 浏览器端下载解密后的源文；仅在被视图层调用时执行（无单测，走手动验收）

@@ -27,6 +27,12 @@ describe("renderMarkdown", () => {
     expect(html).toContain('<a href="https://example.com">示例</a>');
   });
 
+  it("javascript: 链接目标不产生 href", () => {
+    const html = renderMarkdown("[a](javascript:alert(1))");
+    expect(html).not.toContain('href="javascript');
+    expect(renderMarkdown("javascript:alert(1)")).not.toContain("<a ");
+  });
+
   it("围栏代码按语言高亮（含 js 别名）", () => {
     const html = renderMarkdown("```js\nconst a = 1;\n```");
     expect(html).toContain("hljs-");

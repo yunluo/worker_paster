@@ -13,7 +13,7 @@ const md = new MarkdownIt({
   linkify: true,
   highlight(code, lang) {
     const mapped = FENCE_ALIAS[lang] ?? lang;
-    if (code.length <= MAX_HIGHLIGHT_CHARS) {
+    if (mapped && hljs.getLanguage(mapped) && code.length <= MAX_HIGHLIGHT_CHARS) {
       try {
         return hljs.highlight(code, { language: mapped }).value;
       } catch {
