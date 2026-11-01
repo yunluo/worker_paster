@@ -1,0 +1,14 @@
+name = "worker-paster"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+[[kv_namespaces]]
+binding = "PASTES"
+# 本地开发/测试用占位 ID；部署前用 `bunx wrangler kv namespace create PASTES`
+# 返回的真实 ID 替换（见 Task 10）
+id = "00000000000000000000000000000000"
+
+[assets]
+directory = "./frontend/dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]

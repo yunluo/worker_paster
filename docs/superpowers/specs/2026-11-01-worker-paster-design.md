@@ -110,9 +110,9 @@ KV：
 
 ### GET /api/get/:id
 
-- 命中：`200` 返回 KV 中的 JSON
-- 不存在或已过期：统一 `404 { "error": "not found" }`（KV 已自动删除过期数据，无需区分）
-- ID 非法字符返回 `404`
+- 命中：`200` 返回 KV 中的 JSON（响应头带 `cache-control: no-store`，密文不落任何中间缓存）
+- 不存在或已过期：统一 `404 { "error": "粘贴不存在或已过期" }`（KV 已自动删除过期数据，无需区分）
+- ID 格式非法（非 8 位 base62）走 Worker 通用兜底 `404 { "error": "not found" }`
 
 ### 头部
 
@@ -185,7 +185,7 @@ worker_paster/
     └── crypto.test.ts         # 加密往返、错误密钥失败用例
 ```
 
-- 根与 frontend 各自独立 `package.json`（不引入 workspace 复杂度）
+- 包管理器：bun（根 package.json 声明 `workspaces: ["frontend"]`，`bun install` 一次装好两端依赖；测试一律 `bun run test` 走 vitest，不用 bun 自带测试器）
 - `wrangler.toml` 关键配置：`[assets] directory = "./frontend/dist"`、`not_found_handling = "single-page-application"`、`run_worker_first = ["/api/*"]`、KV binding `PASTES`
 
 ## 10. 测试
@@ -201,9 +201,9 @@ worker_paster/
 
 ## 11. 部署
 
-1. `cd frontend && npm ci && npm run build`（产物 → `frontend/dist`）
-2. 根目录 `npm ci && npx wrangler kv namespace create PASTES`，把返回的 id 填入 `wrangler.toml`
-3. `npx wrangler deploy`
+1. `bun install`（workspaces 一次装好全部依赖）+ `bun run build`（产物 → `frontend/dist`）
+2. `bunx wrangler kv namespace create PASTES`，把返回的 id 填入 `wrangler.toml`
+3. `bun run deploy`
 4. 首次部署后访问 workers.dev 域名或绑定自定义域名
 
 ## 12. 未来扩展（不在本期范围）
